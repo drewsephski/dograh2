@@ -5,8 +5,9 @@ import {
     OnEdgesChange,
     OnNodesChange,
     ReactFlowInstance,
+    EdgeChange,
+    NodeChange,
 } from "@xyflow/react";
-import { EdgeChange, NodeChange } from "@xyflow/system";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef } from "react";
 
