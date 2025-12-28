@@ -59,29 +59,6 @@ services:
       - key: PYTHONUNBUFFERED
         value: "1"
 
-  # UI Service  
-  - type: web
-    name: dograh-ui
-    env: node
-    plan: free
-    buildCommand: |
-      cd ui && npm ci && npm run build
-    startCommand: |
-      cd ui && npm start
-    envVars:
-      - key: BACKEND_URL
-        value: https://dograh-api.onrender.com
-      - key: NODE_ENV
-        value: production
-      - key: ENABLE_TELEMETRY
-        value: true
-      - key: POSTHOG_KEY
-        value: phc_ItizB1dP6yv7ZYobbcqrpxTdbomDA8hJFSEmAMdYvIr
-      - key: POSTHOG_HOST
-        value: https://us.posthog.com
-      - key: SENTRY_DSN
-        value: https://d9387fed5f80e90781f1dbd9b2c0994c@o4509486225096704.ingest.us.sentry.io/4510124708200448
-
   # PostgreSQL Database
   - type: pserv
     name: dograh-db

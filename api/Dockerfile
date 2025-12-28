@@ -62,4 +62,4 @@ ENV PYTHONPATH=/app
 EXPOSE 8000
 
 # Run the FastAPI app with uvicorn
-CMD ["bash", "-c", "./scripts/start_services.sh && tail -f ./logs/latest/*.log"]
+CMD ["bash", "-c", "export DATABASE_URL=$(echo $DATABASE_URL | sed 's|^postgresql://|postgresql+asyncpg://|') && ./scripts/start_services.sh && tail -f ./logs/latest/*.log"]
