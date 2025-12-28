@@ -70,9 +70,14 @@ def get_storage_for_backend(backend: str) -> BaseFileSystem:
     # Code 1: AWS S3 implementation (cloud deployments)
     elif backend == StorageBackend.S3.value:
         if not S3_BUCKET:
-            raise ValueError(
-                "S3_BUCKET environment variable is required when using S3 storage"
+            logger.error(
+                f"S3_BUCKET environment variable is required when using S3 storage. "
+                f"Current ENABLE_AWS_S3={ENABLE_AWS_S3}. "
+                f"Falling back to MinIO storage."
             )
+            # Fallback to MinIO if S3 configuration is incomplete
+            return get_storage_for_backend(StorageBackend.MINIO.value)
+        
         bucket = S3_BUCKET
         region = S3_REGION
         logger.info(
@@ -96,17 +101,40 @@ def get_current_storage_backend() -> StorageBackend:
 
 
 # Create a single storage instance at module load time
+# Use lazy initialization to prevent startup crashes
 _backend = StorageBackend.get_current_backend()
 logger.info(
     f"Initializing storage backend: {_backend.name} (value: {_backend.value}, ENABLE_AWS_S3={ENABLE_AWS_S3})"
 )
-storage_fs = get_storage_for_backend(_backend.value)
 
+# Lazy storage initialization - will be created on first access
+_storage_fs = None
 
-# For backward compatibility, keep get_storage() function
 def get_storage() -> BaseFileSystem:
     """Get the module-level storage instance.
-
-    Deprecated: Use 'from api.services.storage import storage_fs' instead.
+    
+    Creates the storage instance on first access to handle configuration issues gracefully.
     """
-    return storage_fs
+    global _storage_fs
+    if _storage_fs is None:
+        try:
+            _storage_fs = get_storage_for_backend(_backend.value)
+        except Exception as e:
+            logger.error(f"Failed to initialize storage backend {_backend.name}: {e}")
+            logger.info("Falling back to MinIO storage")
+            _storage_fs = get_storage_for_backend(StorageBackend.MINIO.value)
+    return _storage_fs
+
+# Create a module-level storage_fs variable that uses lazy initialization
+class _StorageWrapper:
+    """Wrapper class to provide lazy access to storage instance."""
+    
+    def __getattr__(self, name):
+        storage_instance = get_storage()
+        return getattr(storage_instance, name)
+    
+    def __repr__(self):
+        return f"<StorageWrapper backend={_backend.name}>"
+
+# Module-level storage_fs that provides lazy initialization
+storage_fs = _StorageWrapper()

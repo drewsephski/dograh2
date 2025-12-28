@@ -45,12 +45,24 @@ class StorageBackend(Enum):
 
     @classmethod
     def get_current_backend(cls):
-        """Get current backend based on ENABLE_AWS_S3 flag."""
-        from api.constants import ENABLE_AWS_S3
-
+        """Get current backend based on ENABLE_AWS_S3 flag and actual configuration."""
+        from api.constants import ENABLE_AWS_S3, S3_BUCKET
+        from loguru import logger
+        
+        # Log the actual value for debugging
+        import os
+        raw_value = os.getenv("ENABLE_AWS_S3", "false")
+        logger.info(f"Storage backend selection: ENABLE_AWS_S3 raw='{raw_value}', parsed={ENABLE_AWS_S3}")
+        
+        # Additional validation: even if ENABLE_AWS_S3 is true, ensure S3_BUCKET is configured
         if ENABLE_AWS_S3:
+            if not S3_BUCKET:
+                logger.warning("ENABLE_AWS_S3 is true but S3_BUCKET is not configured. Falling back to MinIO.")
+                return cls.MINIO
+            logger.info(f"S3 storage selected with bucket: {S3_BUCKET}")
             return cls.S3
         else:
+            logger.info("MinIO storage selected")
             return cls.MINIO
 
 

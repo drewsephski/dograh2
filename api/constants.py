@@ -30,7 +30,13 @@ DOGRAH_MPS_SECRET_KEY = os.getenv("DOGRAH_MPS_SECRET_KEY", None)
 MPS_API_URL = os.getenv("MPS_API_URL", "https://services.dograh.com")
 
 # Storage Configuration
-ENABLE_AWS_S3 = os.getenv("ENABLE_AWS_S3", "false").lower() == "true"
+ENABLE_AWS_S3 = os.getenv("ENABLE_AWS_S3", "false").lower() in ("true", "1", "yes", "on")
+
+# Log the storage configuration for debugging
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.info(f"Storage configuration: ENABLE_AWS_S3={ENABLE_AWS_S3}, raw_env='{os.getenv('ENABLE_AWS_S3', 'not_set')}'")
 
 # MinIO Configuration
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")
