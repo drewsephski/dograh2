@@ -1,0 +1,97 @@
+services:
+  # API Service
+  - type: web
+    name: dograh-api
+    env: python
+    plan: free
+    buildCommand: |
+      pip install -r api/requirements.txt && \
+      pip install ./pipecat[cartesia,deepgram,openai,elevenlabs,groq,google,azure,sarvam,soundfile,silero,webrtc,local-smart-turn-v3]
+    startCommand: |
+      export PYTHONPATH=/app && \
+      # Convert Render's postgresql:// URL to postgresql+asyncpg:// for async SQLAlchemy
+      export DATABASE_URL=$(echo $DATABASE_URL | sed 's|^postgresql://|postgresql+asyncpg://|') && \
+      alembic -c api/alembic.ini upgrade head && \
+      bash ./scripts/start_services.sh
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: dograh-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: dograh-redis
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ENABLE_AWS_S3
+        value: false
+      - key: MINIO_ENDPOINT
+        value: localhost:9000
+      - key: MINIO_ACCESS_KEY
+        value: minioadmin
+      - key: MINIO_SECRET_KEY
+        value: minioadmin
+      - key: MINIO_BUCKET
+        value: voice-audio
+      - key: MINIO_SECURE
+        value: false
+      - key: ENABLE_TRACING
+        value: false
+      - key: ENABLE_TELEMETRY
+        value: true
+      - key: SENTRY_DSN
+        value: https://3acdb63d5f1f70430953353b82de61e0@o4509486225096704.ingest.us.sentry.io/4510152922693632
+      # Add your API keys here
+      - key: OPENAI_API_KEY
+        value: "" # Add your key
+      - key: DEEPGRAM_API_KEY
+        value: "" # Add your key  
+      - key: ELEVENLABS_API_KEY
+        value: "" # Add your key
+      - key: TWILIO_ACCOUNT_SID
+        value: "" # Add your key
+      - key: TWILIO_AUTH_TOKEN
+        value: "" # Add your key
+      - key: PYTHONUNBUFFERED
+        value: "1"
+
+  # UI Service  
+  - type: web
+    name: dograh-ui
+    env: node
+    plan: free
+    buildCommand: |
+      cd ui && npm ci && npm run build
+    startCommand: |
+      cd ui && npm start
+    envVars:
+      - key: BACKEND_URL
+        value: https://dograh-api.onrender.com
+      - key: NODE_ENV
+        value: production
+      - key: ENABLE_TELEMETRY
+        value: true
+      - key: POSTHOG_KEY
+        value: phc_ItizB1dP6yv7ZYobbcqrpxTdbomDA8hJFSEmAMdYvIr
+      - key: POSTHOG_HOST
+        value: https://us.posthog.com
+      - key: SENTRY_DSN
+        value: https://d9387fed5f80e90781f1dbd9b2c0994c@o4509486225096704.ingest.us.sentry.io/4510124708200448
+
+  # PostgreSQL Database
+  - type: pserv
+    name: dograh-db
+    env: postgres
+    plan: free
+    databases:
+      - name: postgres
+
+  # Redis
+  - type: redis
+    name: dograh-redis
+    plan: free
+    ipAllowList: []
