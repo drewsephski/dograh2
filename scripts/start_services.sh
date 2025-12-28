@@ -207,11 +207,12 @@ done
 # Clean up any port tracking files for uvicorn
 rm -f "$RUN_DIR/uvicorn.port" "$RUN_DIR/uvicorn_new.port" "$RUN_DIR/uvicorn_old.pid"
 
-###############################################################################
-### 5) Run migrations
-###############################################################################
-
-alembic -c "$BASE_DIR/api/alembic.ini" upgrade head
+# 5) Run migrations (skip if using Supabase)
+if [[ "$DATABASE_URL" == *"supabase"* ]]; then
+  echo "Detected Supabase database, skipping Alembic migrations"
+else
+  alembic -c "$BASE_DIR/api/alembic.ini" upgrade head
+fi
 
 ###############################################################################
 ### 6) Prepare logs
