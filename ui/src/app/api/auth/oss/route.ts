@@ -9,7 +9,7 @@ const OSS_TOKEN_COOKIE = 'dograh_oss_token';
 const OSS_USER_COOKIE = 'dograh_oss_user';
 
 function generateOSSToken(): string {
-  return `oss_${Date.now()}_${crypto.randomUUID()}`;
+  return `oss_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 export async function GET() {

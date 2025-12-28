@@ -194,7 +194,7 @@ export function AppSidebar() {
               href="/"
               className="flex items-center gap-2 px-2 text-xl font-bold"
             >
-              Dograh
+              Voxora
             </Link>
           )}
           {/* Toggle button - center it when collapsed */}
@@ -242,7 +242,7 @@ export function AppSidebar() {
                       asChild
                     >
                       <a
-                        href="https://github.com/dograh-hq/dograh"
+                        href="https://github.com/drewsephski/voxora"
                         target="_blank"
                         rel="noopener noreferrer"
                       >
