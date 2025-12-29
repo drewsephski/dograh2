@@ -40,23 +40,28 @@ async function getStackServerApp(): Promise<StackServerApp<boolean, string> | nu
 export async function getServerUser(): Promise<CurrentUser | LocalUser | null> {
   const authProvider = process.env.NEXT_PUBLIC_AUTH_PROVIDER || 'stack';
 
+  logger.debug('[getServerUser] Getting user for provider:', authProvider);
+
   if (authProvider === 'stack') {
     const app = await getStackServerApp();
     if (app) {
       try {
         const user = await app.getUser();
+        logger.debug('[getServerUser] Stack user result:', { hasUser: !!user, userId: user?.id });
         return user;
       } catch (error) {
-        logger.error('Error getting user from Stack:', error);
+        logger.error('[getServerUser] Error getting user from Stack:', error);
         return null;
       }
     }
   } else if (authProvider === 'local') {
     // For OSS mode, get user from cookies (created by middleware)
     const user = await getOSSUser();
+    logger.debug('[getServerUser] OSS user result:', { hasUser: !!user, userId: user?.id });
     return user;
   }
 
+  logger.debug('[getServerUser] No user found for unknown provider');
   return null;
 }
 
@@ -133,18 +138,60 @@ export async function getOSSUser(): Promise<LocalUser | null> {
 export async function getServerAccessToken(): Promise<string | null> {
   const authProvider = getServerAuthProvider();
 
+  logger.debug('[getServerAccessToken] Getting token for provider:', authProvider);
+
   if (authProvider === 'stack') {
-    const user = await getServerUser();
-    if (user && 'getAuthJson' in user) {
-      const auth = await user.getAuthJson();
-      return auth?.accessToken ?? null;
+    try {
+      const user = await getServerUser();
+      if (user && 'getAuthJson' in user) {
+        const auth = await user.getAuthJson();
+        const token = auth?.accessToken ?? null;
+        logger.debug('[getServerAccessToken] Stack token result:', { hasToken: !!token });
+        return token;
+      }
+      logger.debug('[getServerAccessToken] No Stack user or no getAuthJson method');
+    } catch (error) {
+      logger.error('[getServerAccessToken] Error getting Stack token:', error);
+      return null;
     }
   } else if (authProvider === 'local') {
     // Get token from cookies (created by middleware)
-    const oss_token = await getOSSToken();
-    logger.debug(`oss_token: ${oss_token}`);
-    return oss_token;
+    try {
+      const oss_token = await getOSSToken();
+      logger.debug('[getServerAccessToken] OSS token result:', { hasToken: !!oss_token });
+      return oss_token;
+    } catch (error) {
+      logger.error('[getServerAccessToken] Error getting OSS token:', error);
+      return null;
+    }
   }
 
+  logger.debug('[getServerAccessToken] No token found for unknown provider');
   return null;
+}
+
+/**
+ * Get server user with fallback - never throws errors
+ */
+export async function getServerUserWithFallback(): Promise<CurrentUser | LocalUser | null> {
+  try {
+    return await getServerUser();
+  } catch (error) {
+    logger.error('[getServerUserWithFallback] Error getting user, returning null:', error);
+    return null;
+  }
+}
+
+/**
+ * Check if user is first-time user based on cookies
+ */
+export async function isFirstTimeUser(): Promise<boolean> {
+  try {
+    const cookieStore = await cookies();
+    const firstVisitCookie = cookieStore.get('dograh_first_visit')?.value;
+    return !firstVisitCookie;
+  } catch (error) {
+    logger.error('[isFirstTimeUser] Error checking first visit cookie:', error);
+    return false; // Default to not first-time on error
+  }
 }

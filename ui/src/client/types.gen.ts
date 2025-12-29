@@ -3584,5 +3584,5 @@ export type HealthApiV1HealthGetResponses = {
 };
 
 export type ClientOptions = {
-    baseUrl: 'http://127.0.0.1:8000' | (string & {});
+    baseUrl: 'https://voxora-api.onrender.com' | (string & {});
 };

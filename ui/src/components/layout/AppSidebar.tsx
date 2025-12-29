@@ -191,7 +191,7 @@ export function AppSidebar() {
           {/* Logo - only show when expanded */}
           {state === "expanded" && (
             <Link
-              href="/"
+              href="/overview"
               className="flex items-center gap-2 px-2 text-xl font-bold"
             >
               Voxora

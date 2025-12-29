@@ -39,8 +39,8 @@ export default async function Home() {
           logger.debug('[HomePage] Redirecting to /workflow - user has workflows');
           redirect('/workflow');
         } else {
-          logger.debug('[HomePage] Redirecting to /workflow/create - no workflows found');
-          redirect('/workflow/create');
+          logger.debug('[HomePage] Redirecting to /overview - no workflows found');
+          redirect('/overview');
         }
       }
     } catch (error) {
@@ -50,9 +50,9 @@ export default async function Home() {
       }
 
       logger.error('[HomePage] Error checking workflows for local provider:', error);
-      // Default to /workflow/create on actual errors
-      logger.debug('[HomePage] Defaulting to /workflow/create due to error');
-      redirect('/workflow/create');
+      // Default to /overview on actual errors
+      logger.debug('[HomePage] Defaulting to /overview due to error');
+      redirect('/overview');
     }
   }
 
@@ -87,9 +87,10 @@ export default async function Home() {
           typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
         throw error;
       }
-      // Only catch actual API errors
-      console.error("API unavailable, showing sign-in:", error);
-      // Show sign-in page if API is unavailable
+      // For any other errors (including API unavailable), redirect to /overview as fallback
+      logger.error('[HomePage] Error in Stack auth flow, redirecting to /overview as fallback:', error);
+      logger.debug('[HomePage] User exists but getRedirectUrl() failed, falling back to /overview');
+      redirect('/overview');
     }
   }
 
@@ -100,6 +101,10 @@ export default async function Home() {
         justifyContent: "center",
         alignItems: "center",
         height: "100vh",
+        width: "100vw",
+        margin: 0,
+        padding: 0,
+        boxSizing: "border-box",
       }}
     >
       <SignInClient />

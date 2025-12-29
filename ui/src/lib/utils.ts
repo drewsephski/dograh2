@@ -63,9 +63,29 @@ export async function getRedirectUrl(token: string, permissions: { id: string }[
     const hasAdminPermission = permissions.some(p => p.id === 'admin');
     console.log('[getRedirectUrl] Admin permission check:', { hasAdminPermission });
 
-  // If the user doesn't have admin permissions, redirect them to
-  // usage page
+  // If the user doesn't have admin permissions, check if first-time user
   if (!hasAdminPermission) {
+    console.log('[getRedirectUrl] No admin permission, checking if first-time user...');
+    
+    // Check if user has any workflows to determine if first-time
+    try {
+      const workflowsResponse = await getWorkflowsApiV1WorkflowFetchGet({
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      const workflows = workflowsResponse.data ? (Array.isArray(workflowsResponse.data) ? workflowsResponse.data : [workflowsResponse.data]) : [];
+      
+      if (workflows.length === 0) {
+        console.log('[getRedirectUrl] First-time user with no workflows, redirecting to /overview');
+        return "/overview";
+      }
+    } catch (error) {
+      console.log('[getRedirectUrl] Error checking workflows for first-time user, defaulting to /overview');
+      return "/overview";
+    }
+    
     console.log('[getRedirectUrl] No admin permission, redirecting to /usage');
     return "/usage";
   }
@@ -91,19 +111,20 @@ export async function getRedirectUrl(token: string, permissions: { id: string }[
       console.log('[getRedirectUrl] User has workflows, redirecting to /workflow');
       return "/workflow";
     } else {
-      console.log('[getRedirectUrl] No workflows found, redirecting to /workflow/create');
-      return "/workflow/create";
+      console.log('[getRedirectUrl] No workflows found, redirecting to /overview');
+      return "/overview";
     }
   } catch (error) {
     console.error('[getRedirectUrl] Error checking workflows:', error);
-    // If we can't check workflows, default to /workflow/create
-    console.log('[getRedirectUrl] Defaulting to /workflow/create due to error');
-    return "/workflow/create";
+    // If we can't check workflows, default to /overview
+    console.log('[getRedirectUrl] Defaulting to /overview due to error');
+    return "/overview";
   }
   } catch (error) {
     console.error("[getRedirectUrl] Failed to fetch auth user:", error);
-    // Re-throw the error so the caller can handle it
-    throw error;
+    // Don't throw error, instead redirect to /overview as safe fallback
+    console.log('[getRedirectUrl] API call failed, redirecting to /overview as safe fallback');
+    return "/overview";
   }
 }
 

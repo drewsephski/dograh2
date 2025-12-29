@@ -6,11 +6,11 @@ export const createClientConfig: CreateClientConfig = (config) => {
     let baseUrl: string;
 
     if (isServer) {
-        // for server-side rendering, still use environment variable as fallback
-        baseUrl = process.env.BACKEND_URL || 'http://api:8000';
+        // for server-side rendering, use the Render API URL
+        baseUrl = process.env.BACKEND_URL || 'https://voxora-api.onrender.com';
     } else {
-        // for client-side, use the current browser URL's origin
-        baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || window.location.origin;
+        // for client-side, use the Render API URL
+        baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://voxora-api.onrender.com';
     }
 
     return {

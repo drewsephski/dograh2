@@ -141,6 +141,13 @@ interface Logger {
   info: (...args: unknown[]) => void;
   warn: (...args: unknown[]) => void;
   error: (...args: unknown[]) => void;
+  // Enhanced logging methods
+  auth: (action: string, details: Record<string, any>) => void;
+  navigation: (from: string, to: string, context?: Record<string, any>) => void;
+  api: (method: string, url: string, status?: number, duration?: number, error?: any) => void;
+  performance: (metric: string, value: number, unit?: string, context?: Record<string, any>) => void;
+  userAction: (action: string, details: Record<string, any>) => void;
+  errorWithStack: (message: string, error: Error, context?: Record<string, any>) => void;
 }
 
 // Server-side logging function
@@ -215,6 +222,100 @@ const logger: Logger = {
       console.error(`[ERROR] [${caller}]`, ...args);
     } else {
       serverLog('error', args);
+    }
+  },
+
+  // Authentication specific logging
+  auth: (action: string, details: Record<string, any>): void => {
+    const caller = getCallerInfo();
+    const message = `[Auth] ${action}`;
+    const context = { category: 'authentication', ...details };
+    
+    if (isBrowser) {
+      console.info(`[INFO] [${caller}] ${message}`, context);
+    } else {
+      serverLog('info', [message, context]);
+    }
+  },
+
+  // Navigation specific logging
+  navigation: (from: string, to: string, context?: Record<string, any>): void => {
+    const caller = getCallerInfo();
+    const message = `[Navigation] ${from} → ${to}`;
+    const navContext = { category: 'navigation', from, to, ...context };
+    
+    if (isBrowser) {
+      console.info(`[INFO] [${caller}] ${message}`, navContext);
+    } else {
+      serverLog('info', [message, navContext]);
+    }
+  },
+
+  // API specific logging
+  api: (method: string, url: string, status?: number, duration?: number, error?: any): void => {
+    const caller = getCallerInfo();
+    const level = status && status >= 400 ? 'error' : 'info';
+    const message = `[API] ${method} ${url}${status ? ` (${status})` : ''}`;
+    const apiContext = {
+      category: 'api',
+      method,
+      url,
+      status,
+      duration,
+      error: error?.message || error,
+    };
+    
+    if (isBrowser) {
+      if (level === 'error') {
+        console.error(`[ERROR] [${caller}] ${message}`, apiContext);
+      } else {
+        console.info(`[INFO] [${caller}] ${message}`, apiContext);
+      }
+    } else {
+      serverLog(level, [message, apiContext]);
+    }
+  },
+
+  // Performance specific logging
+  performance: (metric: string, value: number, unit: string = 'ms', context?: Record<string, any>): void => {
+    const caller = getCallerInfo();
+    const message = `[Performance] ${metric}: ${value}${unit}`;
+    const perfContext = { category: 'performance', metric, value, unit, ...context };
+    
+    if (isBrowser) {
+      console.info(`[INFO] [${caller}] ${message}`, perfContext);
+    } else {
+      serverLog('info', [message, perfContext]);
+    }
+  },
+
+  // User action specific logging
+  userAction: (action: string, details: Record<string, any>): void => {
+    const caller = getCallerInfo();
+    const message = `[UserAction] ${action}`;
+    const actionContext = { category: 'user_action', ...details };
+    
+    if (isBrowser) {
+      console.info(`[INFO] [${caller}] ${message}`, actionContext);
+    } else {
+      serverLog('info', [message, actionContext]);
+    }
+  },
+
+  // Error specific logging with stack trace
+  errorWithStack: (message: string, error: Error, context?: Record<string, any>): void => {
+    const caller = getCallerInfo();
+    const errorContext = {
+      ...context,
+      error: error.message,
+      stack: error.stack,
+      name: error.name,
+    };
+    
+    if (isBrowser) {
+      console.error(`[ERROR] [${caller}] ${message}`, errorContext);
+    } else {
+      serverLog('error', [message, errorContext]);
     }
   },
 };

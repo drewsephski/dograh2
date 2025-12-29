@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { OnboardingProvider } from "@/context/OnboardingContext";
 import { UserConfigProvider } from "@/context/UserConfigContext";
 import { AuthProvider } from "@/lib/auth";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 
 const geistSans = Geist({
@@ -59,18 +60,20 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AuthProvider>
-          <Suspense fallback={<SpinLoader />}>
-            <UserConfigProvider>
-              <OnboardingProvider>
-                <PostHogIdentify />
-                <AppLayout>
-                  {children}
-                </AppLayout>
-                <Toaster />
-                <ChatwootWidget />
-              </OnboardingProvider>
-            </UserConfigProvider>
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<SpinLoader />}>
+              <UserConfigProvider>
+                <OnboardingProvider>
+                  <PostHogIdentify />
+                  <AppLayout>
+                    {children}
+                  </AppLayout>
+                  <Toaster />
+                  <ChatwootWidget />
+                </OnboardingProvider>
+              </UserConfigProvider>
+            </Suspense>
+          </ErrorBoundary>
         </AuthProvider>
       </body>
     </html>
