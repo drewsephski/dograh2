@@ -192,40 +192,56 @@ async def create_user_configuration_with_mps_key(
         UserConfiguration with MPS-provided API keys or None if failed
     """
 
+    # Use existing service key if available
+    existing_service_key = os.getenv("MPS_SERVICE_KEY")
+    if existing_service_key:
+        logger.info("Using existing MPS service key from environment")
+        configuration = {
+            "llm": {
+                "provider": ServiceProviders.DOGRAH.value,
+                "api_key": existing_service_key,
+                "model": "default",
+            },
+            "tts": {
+                "provider": ServiceProviders.DOGRAH.value,
+                "api_key": existing_service_key,
+                "model": "default",
+                "voice": "default",
+            },
+            "stt": {
+                "provider": ServiceProviders.DOGRAH.value,
+                "api_key": existing_service_key,
+                "model": "default",
+            },
+        }
+        return UserConfiguration(**configuration)
+
+    # Skip MPS call in OSS mode to avoid network issues
+    if DEPLOYMENT_MODE == "oss":
+        logger.warning("Skipping MPS service key creation in OSS mode")
+        return None
+
     async with httpx.AsyncClient() as client:
         # Use MPS API URL from constants
-        if DEPLOYMENT_MODE == "oss":
-            # For OSS mode, create a temporary service key without authentication
-            response = await client.post(
-                f"{MPS_API_URL}/api/v1/service-keys/",
-                json={
-                    "name": f"Default Dograh Model Service Key",
-                    "description": "Auto-generated key for OSS user",
-                    "expires_in_days": 7,  # Short-lived for OSS
-                    "created_by": user_provider_id,
-                },
-                timeout=10.0,
+        # For authenticated mode, use the secret key and organization ID
+        if not DOGRAH_MPS_SECRET_KEY:
+            logger.warning(
+                "Warning: DOGRAH_MPS_SECRET_KEY not set for authenticated mode"
             )
-        else:
-            # For authenticated mode, use the secret key and organization ID
-            if not DOGRAH_MPS_SECRET_KEY:
-                logger.warning(
-                    "Warning: DOGRAH_MPS_SECRET_KEY not set for authenticated mode"
-                )
-                raise ValidationError("Missing DOGRAH_MPS_SECRET_KEY in non oss mode")
+            raise ValidationError("Missing DOGRAH_MPS_SECRET_KEY in non oss mode")
 
-            response = await client.post(
-                f"{MPS_API_URL}/api/v1/service-keys/",
-                json={
-                    "name": f"Default Dograh Model Service Key",
-                    "description": f"Auto-generated key for organization {organization_id}",
-                    "organization_id": organization_id,
-                    "expires_in_days": 90,  # Longer-lived for authenticated users
-                    "created_by": user_provider_id,
-                },
-                headers={"X-Secret-Key": DOGRAH_MPS_SECRET_KEY},
-                timeout=10.0,
-            )
+        response = await client.post(
+            f"{MPS_API_URL}/api/v1/service-keys/",
+            json={
+                "name": f"Default Dograh Model Service Key",
+                "description": f"Auto-generated key for organization {organization_id}",
+                "organization_id": organization_id,
+                "expires_in_days": 90,  # Longer-lived for authenticated users
+                "created_by": user_provider_id,
+            },
+            headers={"X-Secret-Key": DOGRAH_MPS_SECRET_KEY},
+            timeout=10.0,
+        )
 
         if response.status_code == 200:
             data = response.json()
