@@ -5,6 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 
 import ChatwootWidget from "@/components/ChatwootWidget";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import AppLayout from "@/components/layout/AppLayout";
 import PostHogIdentify from "@/components/PostHogIdentify";
 import SpinLoader from "@/components/SpinLoader";
@@ -12,7 +13,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { OnboardingProvider } from "@/context/OnboardingContext";
 import { UserConfigProvider } from "@/context/UserConfigContext";
 import { AuthProvider } from "@/lib/auth";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 
 const geistSans = Geist({

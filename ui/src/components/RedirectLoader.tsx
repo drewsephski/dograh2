@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Clock } from 'lucide-react';
+import { Clock,Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -14,11 +14,11 @@ interface RedirectLoaderProps {
   onTimeout?: () => void;
 }
 
-export default function RedirectLoader({ 
-  destination = "/overview", 
+export default function RedirectLoader({
+  destination = "/overview",
   destinationName = "your dashboard",
   timeout = 3000,
-  onTimeout 
+  onTimeout
 }: RedirectLoaderProps) {
   const [progress, setProgress] = useState(0);
   const [showTimeoutButton, setShowTimeoutButton] = useState(false);
@@ -82,7 +82,7 @@ export default function RedirectLoader({
               <p className="text-sm text-muted-foreground text-center">
                 Taking longer than expected?
               </p>
-              <Button 
+              <Button
                 onClick={handleManualRedirect}
                 className="w-full"
               >

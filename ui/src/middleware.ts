@@ -19,8 +19,8 @@ export function middleware(request: NextRequest) {
   const authProvider = process.env.NEXT_PUBLIC_AUTH_PROVIDER || 'stack';
   const { pathname } = request.nextUrl;
 
-  logMiddleware('Request received', { 
-    pathname, 
+  logMiddleware('Request received', {
+    pathname,
     authProvider,
     hasToken: !!request.cookies.get(OSS_TOKEN_COOKIE)?.value
   });
@@ -78,7 +78,7 @@ export function middleware(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 365, // 1 year
       path: '/',
     });
-    
+
     // Redirect to /overview for first-time users
     const url = request.nextUrl.clone();
     url.pathname = '/overview';

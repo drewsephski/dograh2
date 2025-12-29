@@ -1,12 +1,13 @@
 "use client";
 
-import { Loader2, Home } from 'lucide-react';
+import { Home,Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
+
 import Footer from './Footer';
 import RedirectLoader from './RedirectLoader';
 
@@ -21,7 +22,7 @@ export default function SignInClient() {
   const { user, provider } = useAuth();
   const router = useRouter();
   const [isRedirecting, setIsRedirecting] = useState(false);
-  
+
   // Handle authenticated users
   useEffect(() => {
     if (user) {
@@ -38,7 +39,7 @@ export default function SignInClient() {
       }
     }
   }, [user, provider, router]);
-  
+
   // If user is authenticated and redirecting
   if (user) {
     return <RedirectLoader destination="/overview" destinationName="your dashboard" />;
@@ -50,7 +51,7 @@ export default function SignInClient() {
         <div className="text-center space-y-4">
           <h1 className="text-2xl font-bold mb-4">Local Authentication</h1>
           <p className="text-gray-600">Local authentication is enabled. Redirecting to dashboard...</p>
-          <Button 
+          <Button
             onClick={() => router.push('/overview')}
             variant="outline"
           >

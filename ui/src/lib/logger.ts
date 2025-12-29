@@ -230,7 +230,7 @@ const logger: Logger = {
     const caller = getCallerInfo();
     const message = `[Auth] ${action}`;
     const context = { category: 'authentication', ...details };
-    
+
     if (isBrowser) {
       console.info(`[INFO] [${caller}] ${message}`, context);
     } else {
@@ -243,7 +243,7 @@ const logger: Logger = {
     const caller = getCallerInfo();
     const message = `[Navigation] ${from} → ${to}`;
     const navContext = { category: 'navigation', from, to, ...context };
-    
+
     if (isBrowser) {
       console.info(`[INFO] [${caller}] ${message}`, navContext);
     } else {
@@ -264,7 +264,7 @@ const logger: Logger = {
       duration,
       error: error?.message || error,
     };
-    
+
     if (isBrowser) {
       if (level === 'error') {
         console.error(`[ERROR] [${caller}] ${message}`, apiContext);
@@ -281,7 +281,7 @@ const logger: Logger = {
     const caller = getCallerInfo();
     const message = `[Performance] ${metric}: ${value}${unit}`;
     const perfContext = { category: 'performance', metric, value, unit, ...context };
-    
+
     if (isBrowser) {
       console.info(`[INFO] [${caller}] ${message}`, perfContext);
     } else {
@@ -294,7 +294,7 @@ const logger: Logger = {
     const caller = getCallerInfo();
     const message = `[UserAction] ${action}`;
     const actionContext = { category: 'user_action', ...details };
-    
+
     if (isBrowser) {
       console.info(`[INFO] [${caller}] ${message}`, actionContext);
     } else {
@@ -311,7 +311,7 @@ const logger: Logger = {
       stack: error.stack,
       name: error.name,
     };
-    
+
     if (isBrowser) {
       console.error(`[ERROR] [${caller}] ${message}`, errorContext);
     } else {

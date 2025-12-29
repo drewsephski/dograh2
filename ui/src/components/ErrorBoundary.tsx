@@ -28,7 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     // Log to monitoring service in production
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'exception', {
@@ -36,7 +36,7 @@ export class ErrorBoundary extends Component<Props, State> {
         fatal: false,
       });
     }
-    
+
     this.setState({
       error,
       errorInfo,
@@ -82,9 +82,9 @@ export class ErrorBoundary extends Component<Props, State> {
                   )}
                 </div>
               )}
-              
+
               <div className="flex gap-2">
-                <Button 
+                <Button
                   onClick={this.handleRetry}
                   variant="outline"
                   className="flex-1"
@@ -92,7 +92,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Retry
                 </Button>
-                <Button 
+                <Button
                   onClick={this.handleGoHome}
                   className="flex-1"
                 >
@@ -100,7 +100,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   Go to Dashboard
                 </Button>
               </div>
-              
+
               <p className="text-xs text-gray-500 text-center">
                 If this problem persists, please contact support.
               </p>

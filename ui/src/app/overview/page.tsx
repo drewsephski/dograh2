@@ -1,16 +1,16 @@
 "use client";
 
-import { Star, Plus, Settings, Clock, CheckCircle, BookOpen, MessageSquare, Zap } from 'lucide-react';
+import { BookOpen, CheckCircle, Clock, MessageSquare, Plus, Settings, Star, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { getWorkflowsApiV1WorkflowFetchGet } from '@/client/sdk.gen';
+import WelcomeModal from '@/components/onboarding/WelcomeModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { useAuth } from '@/lib/auth';
-import { getWorkflowsApiV1WorkflowFetchGet } from '@/client/sdk.gen';
-import WelcomeModal from '@/components/onboarding/WelcomeModal';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { useAuth } from '@/lib/auth';
 
 export default function OverviewPage() {
     const { user, provider, getAccessToken } = useAuth();
@@ -20,7 +20,7 @@ export default function OverviewPage() {
     const [workflows, setWorkflows] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    
+
     // Mock onboarding progress - in real app this would come from API/context
     const onboardingSteps = [
         { id: 'create_workflow', label: 'Create your first workflow', completed: workflows.length > 0 },
@@ -29,36 +29,36 @@ export default function OverviewPage() {
         { id: 'deploy', label: 'Deploy to phone', completed: false },
         { id: 'monitor', label: 'Set up monitoring', completed: false },
     ];
-    
+
     const completedSteps = onboardingSteps.filter(step => step.completed).length;
     const onboardingProgress = (completedSteps / onboardingSteps.length) * 100;
-    
+
     useEffect(() => {
         const fetchWorkflows = async () => {
             try {
                 setLoading(true);
                 setError(null);
-                
+
                 // Get client-safe access token from auth context
                 const accessToken = await getAccessToken();
-                
+
                 if (!accessToken) {
                     setError('Authentication required');
                     setLoading(false);
                     return;
                 }
-                
+
                 // Fetch real workflows using the API client
                 const workflowsResponse = await getWorkflowsApiV1WorkflowFetchGet({
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
                     },
                 });
-                
-                const fetchedWorkflows = workflowsResponse.data ? 
-                    (Array.isArray(workflowsResponse.data) ? workflowsResponse.data : [workflowsResponse.data]) : 
+
+                const fetchedWorkflows = workflowsResponse.data ?
+                    (Array.isArray(workflowsResponse.data) ? workflowsResponse.data : [workflowsResponse.data]) :
                     [];
-                
+
                 setWorkflows(fetchedWorkflows);
             } catch (err) {
                 console.error('Failed to fetch workflows:', err);
@@ -67,7 +67,7 @@ export default function OverviewPage() {
                 setLoading(false);
             }
         };
-        
+
         fetchWorkflows();
     }, [getAccessToken]);
 
@@ -80,7 +80,7 @@ export default function OverviewPage() {
                         <CardContent className="flex items-center justify-center py-8">
                             <div className="text-center">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                                <p className="text-muted-foreground">Loading your workflows...</p>
+                                <p className="text-muted-foreground">Don't worry, your work is safe.</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -137,7 +137,7 @@ export default function OverviewPage() {
                         </CardContent>
                     </Card>
                 )}
-                
+
                 {/* Recent Activity */}
                 {!loading && !error && workflows.length > 0 && (
                     <Card className="mb-8">
@@ -249,7 +249,7 @@ export default function OverviewPage() {
                             </Button>
                         </CardContent>
                     </Card>
-                    
+
                     <Card className="hover:shadow-md transition-shadow">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -318,11 +318,11 @@ export default function OverviewPage() {
                     </CardContent>
                 </Card>
             </div>
-            
+
             {/* Welcome Modal for First-Time Users */}
-            <WelcomeModal 
-                isOpen={isModalOpen && shouldShowWelcomeModal()} 
-                onClose={() => setIsModalOpen(false)} 
+            <WelcomeModal
+                isOpen={isModalOpen && shouldShowWelcomeModal()}
+                onClose={() => setIsModalOpen(false)}
             />
         </div>
     );

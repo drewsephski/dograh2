@@ -66,7 +66,7 @@ export async function getRedirectUrl(token: string, permissions: { id: string }[
   // If the user doesn't have admin permissions, check if first-time user
   if (!hasAdminPermission) {
     console.log('[getRedirectUrl] No admin permission, checking if first-time user...');
-    
+
     // Check if user has any workflows to determine if first-time
     try {
       const workflowsResponse = await getWorkflowsApiV1WorkflowFetchGet({
@@ -74,9 +74,9 @@ export async function getRedirectUrl(token: string, permissions: { id: string }[
           Authorization: `Bearer ${token}`,
         },
       });
-      
+
       const workflows = workflowsResponse.data ? (Array.isArray(workflowsResponse.data) ? workflowsResponse.data : [workflowsResponse.data]) : [];
-      
+
       if (workflows.length === 0) {
         console.log('[getRedirectUrl] First-time user with no workflows, redirecting to /overview');
         return "/overview";
@@ -85,7 +85,7 @@ export async function getRedirectUrl(token: string, permissions: { id: string }[
       console.log('[getRedirectUrl] Error checking workflows for first-time user, defaulting to /overview');
       return "/overview";
     }
-    
+
     console.log('[getRedirectUrl] No admin permission, redirecting to /usage');
     return "/usage";
   }

@@ -1,8 +1,8 @@
 "use client";
 
-import { Sparkles, X, ArrowRight, CheckCircle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ArrowRight, CheckCircle,Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,7 @@ interface WelcomeModalProps {
 export default function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
   const { shouldShowWelcomeModal, startOnboarding, getOnboardingSteps, getOnboardingProgress } = useOnboarding();
   const [showModal, setShowModal] = useState(false);
-  
+
   const onboardingSteps = getOnboardingSteps();
   const progress = getOnboardingProgress();
 
@@ -60,7 +60,7 @@ export default function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
           >
             <X className="h-4 w-4" />
           </Button>
-          
+
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
               <Sparkles className="h-6 w-6 text-blue-600" />

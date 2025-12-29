@@ -130,9 +130,9 @@ export const OnboardingProvider = ({ children }: { children: React.ReactNode }) 
             const newCompletedSteps = prev.completedSteps.includes(stepId)
                 ? prev.completedSteps
                 : [...prev.completedSteps, stepId];
-            
+
             const allStepsCompleted = ONBOARDING_STEPS.every(step => newCompletedSteps.includes(step.id));
-            
+
             return {
                 ...prev,
                 completedSteps: newCompletedSteps,
@@ -162,16 +162,16 @@ export const OnboardingProvider = ({ children }: { children: React.ReactNode }) 
     };
 
     const startOnboarding = () => {
-        setOnboardingState(prev => ({ 
-            ...prev, 
+        setOnboardingState(prev => ({
+            ...prev,
             startedOnboarding: true,
-            welcomeModalShown: true 
+            welcomeModalShown: true
         }));
     };
 
     const completeOnboarding = () => {
-        setOnboardingState(prev => ({ 
-            ...prev, 
+        setOnboardingState(prev => ({
+            ...prev,
             completedOnboarding: true,
             completedSteps: ONBOARDING_STEPS.map(step => step.id)
         }));
