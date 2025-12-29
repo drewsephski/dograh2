@@ -13,9 +13,10 @@ interface UseWebSocketRTCProps {
     workflowRunId: number;
     accessToken: string | null;
     initialContextVariables?: Record<string, string> | null;
+    onTranscriptUpdate?: (role: string, content: string, timestamp?: string) => void;
 }
 
-export const useWebSocketRTC = ({ workflowId, workflowRunId, accessToken, initialContextVariables }: UseWebSocketRTCProps) => {
+export const useWebSocketRTC = ({ workflowId, workflowRunId, accessToken, initialContextVariables, onTranscriptUpdate }: UseWebSocketRTCProps) => {
     const [connectionStatus, setConnectionStatus] = useState<'idle' | 'connecting' | 'connected' | 'failed'>('idle');
     const [connectionActive, setConnectionActive] = useState(false);
     const [isCompleted, setIsCompleted] = useState(false);
@@ -271,6 +272,18 @@ export const useWebSocketRTC = ({ workflowId, workflowRunId, accessToken, initia
                             }
                             break;
 
+                        case 'transcript':
+                            // Handle real-time transcript updates
+                            const transcript = message.payload;
+                            if (transcript && onTranscriptUpdate) {
+                                onTranscriptUpdate(
+                                    transcript.role || 'unknown',
+                                    transcript.content || '',
+                                    transcript.timestamp
+                                );
+                            }
+                            break;
+
                         default:
                             logger.warn('Unknown message type:', message.type);
                     }
@@ -279,7 +292,7 @@ export const useWebSocketRTC = ({ workflowId, workflowRunId, accessToken, initia
                 }
             };
         });
-    }, [getWebSocketUrl, connectionActive, isCompleted]);
+    }, [getWebSocketUrl, connectionActive, isCompleted, onTranscriptUpdate]);
 
     const negotiate = async () => {
         const pc = pcRef.current;

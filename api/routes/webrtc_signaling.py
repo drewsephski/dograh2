@@ -66,6 +66,28 @@ class SignalingManager:
         self._connections: Dict[str, WebSocket] = {}
         self._peer_connections: Dict[str, SmallWebRTCConnection] = {}
 
+    async def send_transcript_message(self, workflow_run_id: int, transcript_data: dict):
+        """Send transcript message to connected client."""
+        # Find the connection for this workflow run
+        connection_id = None
+        ws = None
+        
+        for conn_id, websocket in self._connections.items():
+            if str(workflow_run_id) in conn_id:
+                connection_id = conn_id
+                ws = websocket
+                break
+        
+        if ws and connection_id:
+            try:
+                await ws.send_json({
+                    "type": "transcript",
+                    "payload": transcript_data
+                })
+                logger.debug(f"Sent transcript message for workflow run {workflow_run_id}")
+            except Exception as e:
+                logger.error(f"Failed to send transcript message: {e}")
+
     async def handle_websocket(
         self,
         websocket: WebSocket,

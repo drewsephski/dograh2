@@ -250,3 +250,22 @@ def register_transcript_handler(
 
         # Use in-memory buffer
         await in_memory_buffer.append(transcript_text)
+        
+        # Send real-time transcript over WebSocket for test mode
+        try:
+            # Import here to avoid circular imports
+            from api.routes.webrtc_signaling import signaling_manager
+            
+            # Send each message as a separate transcript event
+            for msg in frame.messages:
+                transcript_data = {
+                    "role": msg.role,
+                    "content": msg.content,
+                    "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
+                }
+                await signaling_manager.send_transcript_message(workflow_run_id, transcript_data)
+        except ImportError:
+            # Signaling manager not available (not in WebRTC mode)
+            pass
+        except Exception as e:
+            logger.error(f"Failed to send transcript over WebSocket: {e}")

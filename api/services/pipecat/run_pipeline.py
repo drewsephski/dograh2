@@ -367,9 +367,12 @@ async def _run_pipeline(
     # Get user configuration
     user_config = await db_client.get_user_configurations(user_id)
 
+    # Check if this is a test mode run
+    is_test_mode = workflow_run.mode == "webrtc_test"
+
     # Create services based on user configuration
-    stt = create_stt_service(user_config)
-    tts = create_tts_service(user_config, audio_config)
+    stt = create_stt_service(user_config, is_test_mode=is_test_mode)
+    tts = create_tts_service(user_config, audio_config, is_test_mode=is_test_mode)
     llm = create_llm_service(user_config)
 
     # Get workflow first so we can create engine before pipeline components

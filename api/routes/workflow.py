@@ -14,6 +14,7 @@ from api.db.models import UserModel
 from api.db.workflow_template_client import WorkflowTemplateClient
 from api.schemas.workflow import WorkflowRunResponseSchema
 from api.services.auth.depends import get_user
+from api.routes.deployment import router as deployment_router
 from api.services.mps_service_key_client import mps_service_key_client
 from api.services.workflow.dto import ReactFlowDTO
 from api.services.workflow.errors import ItemKind, WorkflowError
@@ -77,6 +78,9 @@ def regenerate_trigger_uuids(workflow_definition: dict) -> dict:
 
 
 router = APIRouter(prefix="/workflow")
+
+# Include deployment routes
+router.include_router(deployment_router)
 
 
 class ValidateWorkflowResponse(BaseModel):
@@ -861,14 +865,20 @@ async def duplicate_workflow_template(
             detail=f"Workflow template with id {request.template_id} not found",
         )
 
-    # Create a new workflow from the template
+    # Unpack the stored template to get the actual workflow definition
+    workflow_def = template.template_json.get('workflow_definition', template.template_json)
+    template_context_variables = template.template_json.get('template_context_variables')
+    
     # Regenerate trigger UUIDs to avoid conflicts with existing triggers
-    workflow_def = regenerate_trigger_uuids(template.template_json)
+    workflow_def = regenerate_trigger_uuids(workflow_def)
+    
+    # Create the workflow with the unpacked definition and context variables
     workflow = await db_client.create_workflow(
         request.workflow_name,
         workflow_def,
         user.id,
         user.selected_organization_id,
+        template_context_variables=template_context_variables,
     )
 
     # Sync agent triggers if template contains any

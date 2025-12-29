@@ -56,9 +56,10 @@ interface RenderWorkflowProps {
     initialWorkflowConfigurations?: WorkflowConfigurations;
     user: { id: string; email?: string };
     getAccessToken: () => Promise<string>;
+    readOnly?: boolean; // Add read-only prop
 }
 
-function RenderWorkflow({ initialWorkflowName, workflowId, initialFlow, initialTemplateContextVariables, initialWorkflowConfigurations, user, getAccessToken }: RenderWorkflowProps) {
+function RenderWorkflow({ initialWorkflowName, workflowId, initialFlow, initialTemplateContextVariables, initialWorkflowConfigurations, user, getAccessToken, readOnly = false }: RenderWorkflowProps) {
     const [isContextVarsDialogOpen, setIsContextVarsDialogOpen] = useState(false);
     const [isConfigurationsDialogOpen, setIsConfigurationsDialogOpen] = useState(false);
     const [isEmbedDialogOpen, setIsEmbedDialogOpen] = useState(false);
@@ -123,14 +124,23 @@ function RenderWorkflow({ initialWorkflowName, workflowId, initialFlow, initialT
 
                 {/* Workflow Canvas */}
                 <div className="flex-1 relative">
+                    {readOnly && (
+                        <div className="absolute top-4 left-4 z-[1000] bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-sm text-yellow-800">
+                            Preview Mode - This shows your agent's conversation flow
+                        </div>
+                    )}
+                    
                     <ReactFlow
                         nodes={nodes}
                         edges={edges}
-                        onNodesChange={onNodesChange}
-                        onEdgesChange={onEdgesChange}
+                        onNodesChange={readOnly ? undefined : onNodesChange}
+                        onEdgesChange={readOnly ? undefined : onEdgesChange}
                         nodeTypes={nodeTypes}
                         edgeTypes={edgeTypes}
-                        onConnect={onConnect}
+                        onConnect={readOnly ? undefined : onConnect}
+                        nodesDraggable={!readOnly}
+                        nodesConnectable={!readOnly}
+                        elementsSelectable={!readOnly}
                         onInit={(instance) => {
                             rfInstance.current = instance;
                             // Center the workflow on load
@@ -149,152 +159,156 @@ function RenderWorkflow({ initialWorkflowName, workflowId, initialFlow, initialT
                         />
 
                         {/* Top-right controls - vertical layout */}
-                        <Panel position="top-right">
-                            <TooltipProvider>
-                                <div className="flex flex-col gap-2">
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="default"
-                                                size="icon"
-                                                onClick={() => setIsAddNodePanelOpen(true)}
-                                                className="shadow-md hover:shadow-lg"
-                                            >
-                                                <Plus className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="left">
-                                            <p>Add node</p>
-                                        </TooltipContent>
-                                    </Tooltip>
+                        {!readOnly && (
+                            <Panel position="top-right">
+                                <TooltipProvider>
+                                    <div className="flex flex-col gap-2">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    variant="default"
+                                                    size="icon"
+                                                    onClick={() => setIsAddNodePanelOpen(true)}
+                                                    className="shadow-md hover:shadow-lg"
+                                                >
+                                                    <Plus className="h-4 w-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="left">
+                                                <p>Add node</p>
+                                            </TooltipContent>
+                                        </Tooltip>
 
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() => setIsConfigurationsDialogOpen(true)}
-                                                className="bg-white shadow-sm hover:shadow-md"
-                                            >
-                                                <Settings className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="left">
-                                            <p>Configurations</p>
-                                        </TooltipContent>
-                                    </Tooltip>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    onClick={() => setIsConfigurationsDialogOpen(true)}
+                                                    className="bg-white shadow-sm hover:shadow-md"
+                                                >
+                                                    <Settings className="h-4 w-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="left">
+                                                <p>Configurations</p>
+                                            </TooltipContent>
+                                        </Tooltip>
 
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() => setIsContextVarsDialogOpen(true)}
-                                                className="bg-white shadow-sm hover:shadow-md"
-                                            >
-                                                <Variable className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="left">
-                                            <p>Template Context Variables</p>
-                                        </TooltipContent>
-                                    </Tooltip>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    onClick={() => setIsContextVarsDialogOpen(true)}
+                                                    className="bg-white shadow-sm hover:shadow-md"
+                                                >
+                                                    <Variable className="h-4 w-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="left">
+                                                <p>Template Context Variables</p>
+                                            </TooltipContent>
+                                        </Tooltip>
 
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() => setIsEmbedDialogOpen(true)}
-                                                className="bg-white shadow-sm hover:shadow-md"
-                                            >
-                                                <Rocket className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="left">
-                                            <p>Deploy Workflow</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            </TooltipProvider>
-                        </Panel>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    onClick={() => setIsEmbedDialogOpen(true)}
+                                                    className="bg-white shadow-sm hover:shadow-md"
+                                                >
+                                                    <Rocket className="h-4 w-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="left">
+                                                <p>Deploy Workflow</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                </TooltipProvider>
+                            </Panel>
+                        )}
                     </ReactFlow>
 
                     {/* Bottom-left controls - horizontal layout with custom buttons */}
-                    <div className="absolute bottom-12 left-8 z-[1000] flex gap-2">
-                        <TooltipProvider>
-                            {/* Zoom In */}
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={() => rfInstance.current?.zoomIn()}
-                                        className="bg-white shadow-sm hover:shadow-md h-8 w-8"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">
-                                    <p>Zoom in</p>
-                                </TooltipContent>
-                            </Tooltip>
+                    {!readOnly && (
+                        <div className="absolute bottom-12 left-8 z-1000 flex gap-2">
+                            <TooltipProvider>
+                                {/* Zoom In */}
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => rfInstance.current?.zoomIn()}
+                                            className="bg-white shadow-sm hover:shadow-md h-8 w-8"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                        <p>Zoom in</p>
+                                    </TooltipContent>
+                                </Tooltip>
 
-                            {/* Zoom Out */}
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={() => rfInstance.current?.zoomOut()}
-                                        className="bg-white shadow-sm hover:shadow-md h-8 w-8"
-                                    >
-                                        <Minus className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">
-                                    <p>Zoom out</p>
-                                </TooltipContent>
-                            </Tooltip>
+                                {/* Zoom Out */}
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => rfInstance.current?.zoomOut()}
+                                            className="bg-white shadow-sm hover:shadow-md h-8 w-8"
+                                        >
+                                            <Minus className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                        <p>Zoom out</p>
+                                    </TooltipContent>
+                                </Tooltip>
 
-                            {/* Fit View */}
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={() => rfInstance.current?.fitView()}
-                                        className="bg-white shadow-sm hover:shadow-md h-8 w-8"
-                                    >
-                                        <Maximize2 className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">
-                                    <p>Fit view</p>
-                                </TooltipContent>
-                            </Tooltip>
+                                {/* Fit View */}
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => rfInstance.current?.fitView()}
+                                            className="bg-white shadow-sm hover:shadow-md h-8 w-8"
+                                        >
+                                            <Maximize2 className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                        <p>Fit view</p>
+                                    </TooltipContent>
+                                </Tooltip>
 
-                            {/* Tidy/Arrange Nodes */}
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={() => {
-                                            setNodes(layoutNodes(nodes, edges, 'TB', rfInstance));
-                                            setIsDirty(true);
-                                        }}
-                                        className="bg-white shadow-sm hover:shadow-md h-8 w-8"
-                                    >
-                                        <BrushCleaning className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">
-                                    <p>Tidy Up</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
+                                {/* Tidy/Arrange Nodes */}
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => {
+                                                setNodes(layoutNodes(nodes, edges, 'TB', rfInstance));
+                                                setIsDirty(true);
+                                            }}
+                                            className="bg-white shadow-sm hover:shadow-md h-8 w-8"
+                                        >
+                                            <BrushCleaning className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                        <p>Tidy Up</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                    )}
                 </div>
 
                 <AddNodePanel

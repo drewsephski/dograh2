@@ -26,8 +26,12 @@ if TYPE_CHECKING:
     from api.services.pipecat.audio_config import AudioConfig
 
 
-def create_stt_service(user_config):
+def create_stt_service(user_config, is_test_mode: bool = False):
     """Create and return appropriate STT service based on user configuration"""
+    if is_test_mode:
+        from .mock_services import create_mock_stt_service
+        return create_mock_stt_service()
+    
     if user_config.stt.provider == ServiceProviders.DEEPGRAM.value:
         # Use language from user config, defaulting to "multi" for multilingual support
         language = getattr(user_config.stt, "language", None) or "multi"
@@ -88,13 +92,17 @@ def create_stt_service(user_config):
         )
 
 
-def create_tts_service(user_config, audio_config: "AudioConfig"):
+def create_tts_service(user_config, audio_config: "AudioConfig", is_test_mode: bool = False):
     """Create and return appropriate TTS service based on user configuration
 
     Args:
         user_config: User configuration containing TTS settings
         transport_type: Type of transport (e.g., 'stasis', 'twilio', 'webrtc')
     """
+    if is_test_mode:
+        from .mock_services import create_mock_tts_service
+        return create_mock_tts_service()
+    
     # Create function call filter to prevent TTS from speaking function call tags
     xml_function_tag_filter = XMLFunctionTagFilter()
     if user_config.tts.provider == ServiceProviders.DEEPGRAM.value:

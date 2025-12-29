@@ -1,22 +1,25 @@
 'use client';
 
+import { useState } from 'react';
 import { PlusIcon } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
+import { CreateFromTemplateDialog } from './CreateFromTemplateDialog';
 
 export function CreateWorkflowButton() {
-    const router = useRouter();
-    const handleClick = () => {
-        router.push('/workflow/create');
-    };
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     return (
-        <Button
-            onClick={handleClick}
-        >
-            <PlusIcon className="w-4 h-4" />
-            Create Agent
-        </Button>
+        <>
+            <Button onClick={() => setIsDialogOpen(true)}>
+                <PlusIcon className="w-4 h-4" />
+                Create Agent
+            </Button>
+            
+            <CreateFromTemplateDialog 
+                open={isDialogOpen} 
+                onOpenChange={setIsDialogOpen} 
+            />
+        </>
     );
 }

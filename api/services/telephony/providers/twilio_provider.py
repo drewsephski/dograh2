@@ -129,6 +129,124 @@ class TwilioProvider(TelephonyProvider):
         """
         return self.from_numbers
 
+    async def purchase_phone_number(self, area_code: Optional[str] = None) -> Optional[str]:
+        """
+        Purchase a new phone number from Twilio.
+        
+        Args:
+            area_code: Optional area code for the new number (e.g., "415")
+            
+        Returns:
+            The purchased phone number in E.164 format, or None if failed
+        """
+        if not self.validate_config():
+            raise ValueError("Twilio provider not properly configured")
+
+        try:
+            # Build the request URL for available phone numbers
+            endpoint = f"{self.base_url}/AvailablePhoneNumbers/US/Local.json"
+            
+            # Build query parameters
+            params = {
+                "Limit": 1,  # Only get one number
+                "VoiceEnabled": "true",  # Must support voice
+                "SmsEnabled": "false",  # We don't need SMS
+            }
+            
+            if area_code:
+                params["AreaCode"] = area_code
+            
+            # Search for available numbers
+            auth = aiohttp.BasicAuth(self.account_sid, self.auth_token)
+            async with aiohttp.ClientSession() as session:
+                async with session.get(endpoint, params=params, auth=auth) as response:
+                    if response.status != 200:
+                        error_data = await response.json()
+                        logger.error(f"Failed to search for phone numbers: {error_data}")
+                        return None
+                    
+                    search_data = await response.json()
+                    available_numbers = search_data.get("available_phone_numbers", [])
+                    
+                    if not available_numbers:
+                        logger.warning(f"No available phone numbers found for area code {area_code}")
+                        return None
+                    
+                    # Purchase the first available number
+                    number_to_purchase = available_numbers[0]["phone_number"]
+                    
+                    # Purchase the number
+                    purchase_endpoint = f"{self.base_url}/IncomingPhoneNumbers.json"
+                    purchase_data = {
+                        "PhoneNumber": number_to_purchase,
+                        "VoiceUrl": "",  # Will be configured separately
+                        "VoiceMethod": "POST",
+                        "SmsUrl": "",
+                        "SmsMethod": "POST"
+                    }
+                    
+                    async with session.post(purchase_endpoint, data=purchase_data, auth=auth) as purchase_response:
+                        if purchase_response.status != 201:
+                            error_data = await purchase_response.json()
+                            logger.error(f"Failed to purchase phone number: {error_data}")
+                            return None
+                        
+                        purchase_result = await purchase_response.json()
+                        purchased_number = purchase_result.get("phone_number")
+                        
+                        logger.info(f"Successfully purchased phone number: {purchased_number}")
+                        return purchased_number
+                        
+        except Exception as e:
+            logger.error(f"Exception purchasing phone number: {e}")
+            return None
+
+    async def configure_number_webhook(self, phone_number: str, workflow_id: int) -> bool:
+        """
+        Configure a phone number's webhook to point to our TwiML endpoint.
+        
+        Args:
+            phone_number: The phone number to configure (E.164 format)
+            workflow_id: The workflow ID to associate with this number
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.validate_config():
+            raise ValueError("Twilio provider not properly configured")
+
+        try:
+            # Get the base URL for our webhook endpoint
+            from api.services.telephony.tunnel_url_provider import TunnelURLProvider
+            backend_endpoint = await TunnelURLProvider.get_tunnel_url()
+            webhook_url = f"https://{backend_endpoint}/api/v1/telephony/twiml/{workflow_id}"
+            
+            # Update the phone number's voice URL
+            endpoint = f"{self.base_url}/IncomingPhoneNumbers/{phone_number}.json"
+            data = {
+                "VoiceUrl": webhook_url,
+                "VoiceMethod": "POST",
+                "VoiceFallbackUrl": "",  # No fallback for now
+                "VoiceFallbackMethod": "POST",
+                "StatusCallback": f"https://{backend_endpoint}/api/v1/telephony/twilio/status-callback",
+                "StatusCallbackMethod": "POST"
+            }
+            
+            auth = aiohttp.BasicAuth(self.account_sid, self.auth_token)
+            async with aiohttp.ClientSession() as session:
+                async with session.post(endpoint, data=data, auth=auth) as response:
+                    if response.status != 200:
+                        error_data = await response.json()
+                        logger.error(f"Failed to configure webhook for {phone_number}: {error_data}")
+                        return False
+                    
+                    logger.info(f"Successfully configured webhook for {phone_number} -> {webhook_url}")
+                    return True
+                    
+        except Exception as e:
+            logger.error(f"Exception configuring webhook for {phone_number}: {e}")
+            return False
+
     def validate_config(self) -> bool:
         """
         Validate Twilio configuration.
