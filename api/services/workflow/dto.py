@@ -47,7 +47,7 @@ class NodeDataDTO(BaseModel):
     is_static: bool = False
     is_start: bool = False
     is_end: bool = False
-    allow_interrupt: bool = False
+    allow_interrupt: Optional[bool] = None
     extraction_enabled: bool = False
     extraction_prompt: Optional[str] = None
     extraction_variables: Optional[list[ExtractionVariableDTO]] = None
@@ -66,6 +66,52 @@ class NodeDataDTO(BaseModel):
     custom_headers: Optional[list[CustomHeaderDTO]] = None
     payload_template: Optional[dict] = None
     retry_config: Optional[RetryConfigDTO] = None
+    # Validation fields
+    invalid: Optional[bool] = None
+    validationMessage: Optional[str] = None
+
+    @classmethod
+    def normalize_node_data(cls, node_type: str, data: dict) -> dict:
+        """
+        Normalize node data by filling in missing optional fields with sensible defaults.
+        
+        Args:
+            node_type: The type of node
+            data: The node data dictionary
+            
+        Returns:
+            Normalized node data dictionary
+        """
+        # Set default allow_interrupt based on node type if not present
+        if "allow_interrupt" not in data or data["allow_interrupt"] is None:
+            data["allow_interrupt"] = cls._get_default_allow_interrupt(node_type)
+        
+        # Set validation defaults
+        if "invalid" not in data or data["invalid"] is None:
+            data["invalid"] = False
+        if "validationMessage" not in data:
+            data["validationMessage"] = None
+        
+        # Set other common defaults
+        if "extraction_enabled" not in data:
+            data["extraction_enabled"] = False
+        if "add_global_prompt" not in data:
+            data["add_global_prompt"] = True
+        
+        return data
+    
+    @staticmethod
+    def _get_default_allow_interrupt(node_type: str) -> bool:
+        """Get the default allow_interrupt value for a node type."""
+        switch_type_mapping = {
+            "agentNode": True,    # Agents can be interrupted
+            "startCall": False,   # Start messages should not be interrupted
+            "endCall": False,     # End messages should not be interrupted
+            "trigger": False,     # Trigger nodes should not be interrupted
+            "webhook": False,     # Webhook nodes should not be interrupted
+            "globalNode": False,  # Global nodes should not be interrupted
+        }
+        return switch_type_mapping.get(node_type, False)
 
 
 class RFNodeDTO(BaseModel):

@@ -37,6 +37,102 @@ export function getDefaultAllowInterrupt(
   }
 }
 
+const normalizeWorkflowData = (nodes: FlowNode[], edges: FlowEdge[]) => {
+  const normalizedNodes = nodes.map((node) => {
+    const normalizedNode = { ...node };
+    
+    // Ensure data object exists with required properties
+    if (!normalizedNode.data) {
+      normalizedNode.data = {
+        prompt: "",
+        name: "",
+        allow_interrupt: getDefaultAllowInterrupt(node.type),
+        invalid: false,
+        validationMessage: null,
+        extraction_enabled: false,
+        add_global_prompt: true,
+      };
+    } else {
+      // Set default allow_interrupt based on node type
+      if (normalizedNode.data.allow_interrupt === undefined) {
+        normalizedNode.data.allow_interrupt = getDefaultAllowInterrupt(node.type);
+      }
+
+      // Ensure required properties exist
+      if (normalizedNode.data.prompt === undefined) {
+        normalizedNode.data.prompt = "";
+      }
+      if (normalizedNode.data.name === undefined) {
+        normalizedNode.data.name = "";
+      }
+
+      // Set validation defaults
+      if (normalizedNode.data.invalid === undefined) {
+        normalizedNode.data.invalid = false;
+      }
+      if (normalizedNode.data.validationMessage === undefined) {
+        normalizedNode.data.validationMessage = null;
+      }
+
+      // Set other common defaults
+      if (normalizedNode.data.extraction_enabled === undefined) {
+        normalizedNode.data.extraction_enabled = false;
+      }
+      if (normalizedNode.data.add_global_prompt === undefined) {
+        normalizedNode.data.add_global_prompt = true;
+      }
+    }
+
+    // Log warnings for any missing fields that were normalized
+    const missingFields = [];
+    if (node.data.allow_interrupt === undefined) missingFields.push('allow_interrupt');
+    if (node.data.invalid === undefined) missingFields.push('invalid');
+    if (node.data.validationMessage === undefined) missingFields.push('validationMessage');
+    if (node.data.extraction_enabled === undefined) missingFields.push('extraction_enabled');
+    if (node.data.add_global_prompt === undefined) missingFields.push('add_global_prompt');
+
+    if (missingFields.length > 0) {
+      logger.warn(`Node ${node.id} was missing fields: ${missingFields.join(', ')}`);
+    }
+
+    return normalizedNode;
+  });
+
+  const normalizedEdges = edges.map((edge) => {
+    const normalizedEdge = { ...edge };
+    
+    // Ensure data object exists with required properties
+    if (!normalizedEdge.data) {
+      normalizedEdge.data = {
+        label: "",
+        condition: "",
+        invalid: false,
+        validationMessage: null,
+      };
+    } else {
+      // Set required data fields
+      if (normalizedEdge.data.label === undefined) {
+        normalizedEdge.data.label = "";
+      }
+      if (normalizedEdge.data.condition === undefined) {
+        normalizedEdge.data.condition = "";
+      }
+
+      // Set validation defaults
+      if (normalizedEdge.data.invalid === undefined) {
+        normalizedEdge.data.invalid = false;
+      }
+      if (normalizedEdge.data.validationMessage === undefined) {
+        normalizedEdge.data.validationMessage = null;
+      }
+    }
+
+    return normalizedEdge;
+  });
+
+  return { normalizedNodes, normalizedEdges };
+};
+
 const defaultNodes: FlowNode[] = [
   {
     id: "1",
@@ -165,25 +261,23 @@ export const useWorkflowState = ({
 
   // Initialize workflow on mount
   useEffect(() => {
-    const initialNodes = initialFlow?.nodes?.length
-      ? initialFlow.nodes.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            invalid: false,
-            allow_interrupt:
-              node.data.allow_interrupt !== undefined
-                ? node.data.allow_interrupt
-                : getDefaultAllowInterrupt(node.type),
-          },
-        }))
-      : defaultNodes;
+    let initialNodes = defaultNodes;
+    let initialEdges: FlowEdge[] = [];
+
+    if (initialFlow?.nodes?.length) {
+      const { normalizedNodes, normalizedEdges } = normalizeWorkflowData(
+        initialFlow.nodes,
+        initialFlow.edges || []
+      );
+      initialNodes = normalizedNodes;
+      initialEdges = normalizedEdges;
+    }
 
     initializeWorkflow(
       workflowId,
       initialWorkflowName,
       initialNodes,
-      initialFlow?.edges ?? [],
+      initialEdges,
       initialTemplateContextVariables,
       initialWorkflowConfigurations
     );

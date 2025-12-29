@@ -17,6 +17,7 @@ from api.services.auth.depends import get_user
 from api.services.mps_service_key_client import mps_service_key_client
 from api.services.workflow.dto import ReactFlowDTO
 from api.services.workflow.errors import ItemKind, WorkflowError
+from api.services.workflow.normalization import validate_and_normalize_workflow_definition
 from api.services.workflow.workflow import WorkflowGraph
 
 
@@ -232,34 +233,71 @@ async def create_workflow(
         request: The create workflow request
         user: The user to create the workflow for
     """
-    workflow = await db_client.create_workflow(
-        request.name,
-        request.workflow_definition,
-        user.id,
-        user.selected_organization_id,
-    )
+    try:
+        # Validate and normalize the workflow definition
+        logger.info("Validating and normalizing workflow definition for manual creation")
+        normalized_workflow_def, validation_errors = validate_and_normalize_workflow_definition(request.workflow_definition)
+        
+        if validation_errors:
+            logger.warning(f"Workflow validation errors: {validation_errors}")
+            # Don't fail on validation errors for manual creation, but log them
 
-    # Sync agent triggers if workflow definition contains any
-    if request.workflow_definition:
-        trigger_paths = extract_trigger_paths(request.workflow_definition)
-        if trigger_paths:
-            await db_client.sync_triggers_for_workflow(
-                workflow_id=workflow.id,
-                organization_id=user.selected_organization_id,
-                trigger_paths=trigger_paths,
-            )
+        # Create the workflow with normalized definition
+        workflow = await db_client.create_workflow(
+            request.name,
+            normalized_workflow_def,
+            user.id,
+            user.selected_organization_id,
+        )
 
-    return {
-        "id": workflow.id,
-        "name": workflow.name,
-        "status": workflow.status,
-        "created_at": workflow.created_at,
-        "workflow_definition": workflow.workflow_definition_with_fallback,
-        "current_definition_id": workflow.current_definition_id,
-        "template_context_variables": workflow.template_context_variables,
-        "call_disposition_codes": workflow.call_disposition_codes,
-        "workflow_configurations": workflow.workflow_configurations,
-    }
+        # Sync agent triggers if workflow definition contains any
+        if normalized_workflow_def:
+            trigger_paths = extract_trigger_paths(normalized_workflow_def)
+            if trigger_paths:
+                logger.info(f"Syncing {len(trigger_paths)} trigger paths for manual workflow creation")
+                await db_client.sync_triggers_for_workflow(
+                    workflow_id=workflow.id,
+                    organization_id=user.selected_organization_id,
+                    trigger_paths=trigger_paths,
+                )
+
+        logger.info(f"Successfully created manual workflow {workflow.id}", extra={
+            "workflow_id": workflow.id,
+            "workflow_name": workflow.name,
+            "user_id": user.id,
+            "organization_id": user.selected_organization_id
+        })
+
+        return {
+            "id": workflow.id,
+            "name": workflow.name,
+            "status": workflow.status,
+            "created_at": workflow.created_at,
+            "workflow_definition": workflow.workflow_definition_with_fallback,
+            "current_definition_id": workflow.current_definition_id,
+            "template_context_variables": workflow.template_context_variables,
+            "call_disposition_codes": workflow.call_disposition_codes,
+            "workflow_configurations": workflow.workflow_configurations,
+        }
+    except ValueError as e:
+        logger.error(f"Validation error in manual workflow creation: {e}", extra={
+            "user_id": user.id,
+            "organization_id": user.selected_organization_id
+        })
+        raise HTTPException(
+            status_code=400,
+            detail=f"Workflow structure is invalid: {str(e)}",
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error creating workflow: {e}", extra={
+            "user_id": user.id,
+            "organization_id": user.selected_organization_id,
+            "error_type": type(e).__name__
+        })
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create workflow. Please try again.",
+        )
 
 
 @router.post("/create/template")
@@ -273,7 +311,8 @@ async def create_workflow_from_template(
     This endpoint:
     1. Uses mps_service_key_client to call MPS workflow API
     2. Passes organization ID (authenticated mode) or created_by (OSS mode)
-    3. Creates the workflow in the database
+    3. Validates and normalizes the MPS response
+    4. Creates the workflow in the database
 
     Args:
         request: The template creation request with call_type, use_case, and activity_description
@@ -283,9 +322,17 @@ async def create_workflow_from_template(
         The created workflow
 
     Raises:
-        HTTPException: If MPS API call fails
+        HTTPException: If MPS API call fails or validation fails
     """
     try:
+        # Log the start of MPS API call
+        logger.info(f"Starting MPS API call for workflow creation", extra={
+            "user_id": user.id,
+            "organization_id": user.selected_organization_id,
+            "call_type": request.call_type,
+            "use_case": request.use_case
+        })
+
         # Call MPS API to generate workflow using the client
         if DEPLOYMENT_MODE == "oss":
             workflow_data = await mps_service_key_client.call_workflow_api(
@@ -305,13 +352,48 @@ async def create_workflow_from_template(
                 organization_id=user.selected_organization_id,
             )
 
-        # Create the workflow in our database
+        # Validate MPS API response structure
+        if not workflow_data:
+            raise HTTPException(
+                status_code=500,
+                detail="MPS API returned empty response"
+            )
+
+        # Verify required fields in workflow_data
+        if "workflow_definition" not in workflow_data:
+            raise HTTPException(
+                status_code=500,
+                detail="MPS API response missing workflow_definition field"
+            )
+
+        workflow_definition = workflow_data.get("workflow_definition", {})
+        if not workflow_definition:
+            raise HTTPException(
+                status_code=500,
+                detail="MPS API returned empty workflow_definition"
+            )
+
+        # Validate and normalize the workflow definition
+        logger.info("Validating and normalizing workflow definition")
+        normalized_workflow_def, validation_errors = validate_and_normalize_workflow_definition(workflow_definition)
+        
+        if validation_errors:
+            logger.warning(f"Workflow validation errors: {validation_errors}")
+            # Don't fail on validation errors, but log them for debugging
+
+        # Generate workflow name if not provided by MPS
+        workflow_name = workflow_data.get("name")
+        if not workflow_name:
+            workflow_name = f"{request.use_case} - {request.call_type}"
+            logger.info(f"Generated workflow name: {workflow_name}")
+
         # Regenerate trigger UUIDs to avoid conflicts with existing triggers
-        workflow_def = regenerate_trigger_uuids(
-            workflow_data.get("workflow_definition", {})
-        )
+        workflow_def = regenerate_trigger_uuids(normalized_workflow_def)
+        
+        # Create the workflow in our database
+        logger.info("Creating workflow in database")
         workflow = await db_client.create_workflow(
-            name=workflow_data.get("name", f"{request.use_case} - {request.call_type}"),
+            name=workflow_name,
             workflow_definition=workflow_def,
             user_id=user.id,
             organization_id=user.selected_organization_id,
@@ -321,11 +403,19 @@ async def create_workflow_from_template(
         if workflow_def:
             trigger_paths = extract_trigger_paths(workflow_def)
             if trigger_paths:
+                logger.info(f"Syncing {len(trigger_paths)} trigger paths")
                 await db_client.sync_triggers_for_workflow(
                     workflow_id=workflow.id,
                     organization_id=user.selected_organization_id,
                     trigger_paths=trigger_paths,
                 )
+
+        logger.info(f"Successfully created workflow {workflow.id}", extra={
+            "workflow_id": workflow.id,
+            "workflow_name": workflow.name,
+            "user_id": user.id,
+            "organization_id": user.selected_organization_id
+        })
 
         return {
             "id": workflow.id,
@@ -340,16 +430,51 @@ async def create_workflow_from_template(
         }
 
     except HTTPStatusError as e:
-        logger.error(f"MPS API error: {e}")
+        logger.error(f"MPS API error: {e}", extra={
+            "status_code": e.response.status_code if hasattr(e, "response") else None,
+            "user_id": user.id,
+            "organization_id": user.selected_organization_id
+        })
         raise HTTPException(
             status_code=e.response.status_code if hasattr(e, "response") else 500,
-            detail=str(e),
+            detail="MPS API is unavailable. Please try again later.",
+        )
+    except ConnectionError as e:
+        logger.error(f"Connection error to MPS API: {e}", extra={
+            "user_id": user.id,
+            "organization_id": user.selected_organization_id
+        })
+        raise HTTPException(
+            status_code=503,
+            detail="AI service is temporarily unavailable. Please try again.",
+        )
+    except TimeoutError as e:
+        logger.error(f"Timeout error calling MPS API: {e}", extra={
+            "user_id": user.id,
+            "organization_id": user.selected_organization_id
+        })
+        raise HTTPException(
+            status_code=504,
+            detail="AI workflow generation timed out. Please try again.",
+        )
+    except ValueError as e:
+        logger.error(f"Validation error in workflow creation: {e}", extra={
+            "user_id": user.id,
+            "organization_id": user.selected_organization_id
+        })
+        raise HTTPException(
+            status_code=400,
+            detail=f"Generated workflow structure is invalid: {str(e)}",
         )
     except Exception as e:
-        logger.error(f"Unexpected error creating workflow from template: {e}")
+        logger.error(f"Unexpected error creating workflow from template: {e}", extra={
+            "user_id": user.id,
+            "organization_id": user.selected_organization_id,
+            "error_type": type(e).__name__
+        })
         raise HTTPException(
             status_code=500,
-            detail=f"An unexpected error occurred: {str(e)}",
+            detail="An unexpected error occurred while creating the workflow. Please try again.",
         )
 
 

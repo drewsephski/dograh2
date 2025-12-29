@@ -2,6 +2,7 @@ import hashlib
 import json
 from typing import Optional
 
+from loguru import logger
 from sqlalchemy import func
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -53,9 +54,29 @@ class WorkflowClient(BaseDBClient):
         workflow_definition: dict,
         user_id: int,
         organization_id: int = None,
+        skip_normalization: bool = False,
     ) -> WorkflowModel:
         async with self.async_session() as session:
             try:
+                # Validate and normalize workflow definition unless explicitly skipped
+                if not skip_normalization:
+                    logger.info("Validating and normalizing workflow definition")
+                    try:
+                        from api.services.workflow.normalization import validate_and_normalize_workflow_definition
+                        normalized_workflow_def, validation_errors = validate_and_normalize_workflow_definition(workflow_definition)
+                        
+                        if validation_errors:
+                            logger.warning(f"Workflow validation errors: {validation_errors}")
+                            # Don't fail on validation errors, but log them for debugging
+                        
+                        workflow_definition = normalized_workflow_def
+                        logger.info("Workflow definition normalized successfully")
+                    except ImportError:
+                        logger.warning("Normalization service not available, skipping validation")
+                    except Exception as e:
+                        logger.error(f"Error during workflow normalization: {e}")
+                        # Continue with original workflow_definition if normalization fails
+
                 new_workflow = WorkflowModel(
                     name=name,
                     workflow_definition=workflow_definition,  # Keep for backwards compatibility

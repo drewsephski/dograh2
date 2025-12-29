@@ -1,12 +1,13 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import RenderWorkflow from '@/app/workflow/[workflowId]/RenderWorkflow';
 import { getWorkflowApiV1WorkflowFetchWorkflowIdGet } from '@/client/sdk.gen';
 import type { WorkflowResponse } from '@/client/types.gen';
 import { FlowEdge, FlowNode } from '@/components/flow/types';
+import { Button } from '@/components/ui/button';
 import SpinLoader from '@/components/SpinLoader';
 import { useAuth } from '@/lib/auth';
 import logger from '@/lib/logger';
@@ -16,6 +17,7 @@ import WorkflowLayout from '../WorkflowLayout';
 
 export default function WorkflowDetailPage() {
     const params = useParams();
+    const router = useRouter();
     const [workflow, setWorkflow] = useState<WorkflowResponse | undefined>(undefined);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -60,6 +62,29 @@ export default function WorkflowDetailPage() {
     const stableUser = useMemo(() => user, [user]);
     const stableGetAccessToken = useMemo(() => getAccessToken, [getAccessToken]);
 
+    // Validate workflow structure before rendering
+    const validateWorkflowStructure = (workflow: WorkflowResponse) => {
+        if (!workflow.workflow_definition) {
+            return false;
+        }
+
+        const definition = workflow.workflow_definition;
+        if (!definition.nodes || !Array.isArray(definition.nodes)) {
+            return false;
+        }
+
+        if (definition.nodes.length === 0) {
+            return false;
+        }
+
+        // Check for at least one start node
+        const hasStartNode = definition.nodes.some((node: any) => 
+            node.data?.is_start || node.type === 'startCall' || node.type === 'trigger'
+        );
+
+        return hasStartNode;
+    };
+
     if (loading) {
         return (
             <WorkflowLayout>
@@ -72,6 +97,25 @@ export default function WorkflowDetailPage() {
             <WorkflowLayout showFeaturesNav={false}>
                 <div className="flex items-center justify-center min-h-screen">
                     <div className="text-lg text-destructive">{error || 'Workflow not found'}</div>
+                </div>
+            </WorkflowLayout>
+        );
+    }
+    else if (!validateWorkflowStructure(workflow)) {
+        return (
+            <WorkflowLayout showFeaturesNav={false}>
+                <div className="flex items-center justify-center min-h-screen">
+                    <div className="text-center space-y-4 max-w-md">
+                        <div className="text-lg text-destructive">
+                            This workflow has an invalid structure. Please recreate it.
+                        </div>
+                        <Button 
+                            onClick={() => router.push('/workflow/create')}
+                            className="w-full"
+                        >
+                            Recreate Workflow
+                        </Button>
+                    </div>
                 </div>
             </WorkflowLayout>
         );
